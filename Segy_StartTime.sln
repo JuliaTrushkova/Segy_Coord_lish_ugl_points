@@ -1,0 +1,66 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Segy_Coord", "Segy_Coord.csproj", "{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{11DD3C5B-FC93-42FB-8065-3ACE2DDFCADB}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\UnpluggedSegy-master\CodeAnalysisDictionary.xml = ..\..\UnpluggedSegy-master\CodeAnalysisDictionary.xml
+		..\..\UnpluggedSegy-master\Local.testsettings = ..\..\UnpluggedSegy-master\Local.testsettings
+		..\..\UnpluggedSegy-master\readme.md = ..\..\UnpluggedSegy-master\readme.md
+		..\..\UnpluggedSegy-master\TraceAndTestImpact.testsettings = ..\..\UnpluggedSegy-master\TraceAndTestImpact.testsettings
+		..\..\UnpluggedSegy-master\UnpluggedSegy.vsmdi = ..\..\UnpluggedSegy-master\UnpluggedSegy.vsmdi
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unplugged.Segy", "..\..\UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\Unplugged.Segy.csproj", "{096016A3-C38E-41C0-9853-4C4AF2DF8782}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|iPhone = Debug|iPhone
+		Debug|iPhoneSimulator = Debug|iPhoneSimulator
+		Release|Any CPU = Release|Any CPU
+		Release|iPhone = Release|iPhone
+		Release|iPhoneSimulator = Release|iPhoneSimulator
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|iPhone.ActiveCfg = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|iPhone.Build.0 = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|iPhoneSimulator.ActiveCfg = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Debug|iPhoneSimulator.Build.0 = Debug|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|iPhone.ActiveCfg = Release|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|iPhone.Build.0 = Release|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
+		{AF759F25-5BE0-4FF5-A831-CABFF2CDBF2D}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|iPhone.ActiveCfg = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|iPhone.Build.0 = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|iPhoneSimulator.ActiveCfg = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Debug|iPhoneSimulator.Build.0 = Debug|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|Any CPU.Build.0 = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|iPhone.ActiveCfg = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|iPhone.Build.0 = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
+		{096016A3-C38E-41C0-9853-4C4AF2DF8782}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {274A24D1-D8EE-41E7-8FF2-987F8F95775E}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = Unplugged.Segy.MonoTouch.Tests\Unplugged.Segy.MonoTouch.Tests.csproj
+	EndGlobalSection
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = UnpluggedSegy.vsmdi
+	EndGlobalSection
+EndGlobal
