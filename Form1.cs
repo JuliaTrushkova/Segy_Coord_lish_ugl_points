@@ -19,13 +19,13 @@ namespace Segy_Coord
     public partial class Form1 : Form
     {
 
-        Dictionary<string, List<PointD>> cornerPointsAllProfiles;
+        Dictionary<string, List<Vector>> cornerPointsAllProfiles;
         
 
         public Form1()
         {
             InitializeComponent();
-            cornerPointsAllProfiles = new Dictionary<string, List<PointD>>();
+            cornerPointsAllProfiles = new Dictionary<string, List<Vector>>();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -54,10 +54,12 @@ namespace Segy_Coord
                     //считывание segy файла для добавление в исходный список segy файлов
                     ISegyFile line = reader.Read(Filenames1[j]);
                     line.FileInByte = File.ReadAllBytes(Filenames1[j]);
-                    Logging.SendNameOfLine(Path.GetFileNameWithoutExtension(Filenames1[j]));
-
+                    
+                    string NameOfProfile = Path.GetFileNameWithoutExtension(Filenames1[j]);
+                    Logging.SendNameOfLine(NameOfProfile);
                     //записываем координаты
-                    PointD[] coordinates = Transform(line.Traces.Count, Path.GetFileNameWithoutExtension(Filenames1[j]));
+                    if (cornerPointsAllProfiles.TryGetValue())
+                    PointD[] coordinates = VectorPointTransform.TransformCornerPointsToLinePoints(line.Traces.Count, Path.GetFileNameWithoutExtension(Filenames1[j]), );
 
                     if (coordinates == null || coordinates.Length == 0)
                         continue;
@@ -212,7 +214,8 @@ namespace Segy_Coord
                         {
                             if (i == linesList.Count - 1)
                                 cornerPoints.Add(cornerPoint);
-                            cornerPointsAllProfiles[nameOfProfile] = cornerPoints;
+                            List<Vector> vectorsOfCornerPoints = VectorPointTransform.ConvertPointsToVectors(cornerPoints);
+                            cornerPointsAllProfiles[nameOfProfile] = vectorsOfCornerPoints;
                             cornerPoints = new List<PointD>();
                             nameOfProfile = temp[1];
                         }

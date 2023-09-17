@@ -49,7 +49,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="Unplugged.IbmBits, Version=0.0.0.3, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\Unplugged.IbmBits.0.0.0.3\lib\net40\Unplugged.IbmBits.dll</HintPath>
+      <HintPath>UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\bin\Release\Unplugged.IbmBits.dll</HintPath>
+    </Reference>
+    <Reference Include="Unplugged.Segy, Version=0.6.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\bin\Release\Unplugged.Segy.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -73,12 +77,6 @@
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\Unplugged.Segy.csproj">
-      <Project>{096016a3-c38e-41c0-9853-4c4af2df8782}</Project>
-      <Name>Unplugged.Segy</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
