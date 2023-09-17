@@ -77,7 +77,7 @@ namespace Segy_Coord
 
         public static void SendDistanceOfTrace(double distanceOfTrace)
         {
-            LoggingMessage.Append($" - {distanceOfTrace} length of profile\t");
+            LoggingMessage.Append($" - {distanceOfTrace} distance between traces\t");
         }
 
         public static void SendNameOfLine(string NameOfLine)

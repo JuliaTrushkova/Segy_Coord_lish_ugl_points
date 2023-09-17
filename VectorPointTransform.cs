@@ -18,35 +18,59 @@ namespace Segy_Coord
             return new Vector(vector2.VectorCoordinates, vector1.VectorCoordinates);
         }
 
+        private static void CalculateStartPoint(ref int numberOfTrace, ref PointD startPointOfSegment, double distanceOfTrace, Vector vectorNextSegment, ref PointD[] coordinates)
+        {
+            numberOfTrace++;
+            startPointOfSegment = CalculateNextStartPoint(startPointOfSegment, vectorNextSegment, distanceOfTrace);
+            coordinates[numberOfTrace] = new PointD(startPointOfSegment.X, startPointOfSegment.Y);
+        }
+
         //Расчет следующей начальной точки следующего сегмента
         //Рассчитывается таким образом, чтобы точка находилась на линии сегмента и
         //расстояние между ней и конечной точкой предыдущего сегмента было равно заданному расстоянию между трассами
-        private static PointD CalculateNextStartPoint(PointD pointPrev, Vector vector, double distanceOfTrace)
+        private static PointD CalculateNextStartPoint(PointD pointPrev, Vector vectorNext, double distanceOfTrace)
         {
-            double shiftFromStart = CalculateShiftFromStart(pointPrev, vector, distanceOfTrace);
+            if (vectorNext is null)
+            {
+                throw new ArgumentNullException(nameof(vectorNext));
+            }
 
-            (double dx, double dy) dXdYOfSegment = vector.DXDYOfVector();
+            double shiftFromStart = CalculateShiftFromStart(pointPrev, vectorNext, distanceOfTrace);
 
-            double dXOfTrace = shiftFromStart * dXdYOfSegment.dx / vector.Length;
-            double dYOfTrace = shiftFromStart * dXdYOfSegment.dy / vector.Length;
-            pointPrev.ShiftCoordinates(dXOfTrace, dYOfTrace);
-            return pointPrev;
+            (double dx, double dy) dXdYOfSegment = vectorNext.DXDYOfVector();
+
+            double dXOfTrace = shiftFromStart * dXdYOfSegment.dx / vectorNext.Length;
+            double dYOfTrace = shiftFromStart * dXdYOfSegment.dy / vectorNext.Length;
+            PointD pointNext = new PointD(vectorNext.StartPoint.X + dXOfTrace, vectorNext.StartPoint.Y + dYOfTrace);
+            return pointNext;
         }
 
         //Расчет расстояния между начальной точкой сегмента и стартом сегмента
-        public static double CalculateShiftFromStart(PointD pointPrev, Vector vector, double distanceOfTrace)
+        public static double CalculateShiftFromStart(PointD pointPrev, Vector vectorNext, double distanceOfTrace)
         {
-            Vector vectorFromPrev = new Vector(pointPrev, vector.StartPoint);
-            double sinAngle = CalCulateSinAngle(vectorFromPrev, vector);
+            Vector vectorFromPrev = new Vector(vectorNext.StartPoint, pointPrev);
+            decimal cosA = CalCulateCosA(vectorFromPrev, vectorNext);
+            double sinAngle = CalCulateSinAngle(cosA);
 
             double deltaPerpPrev = vectorFromPrev.Length * sinAngle;
 
             double deltaPerpStart = Math.Sqrt(vectorFromPrev.Length * vectorFromPrev.Length - deltaPerpPrev * deltaPerpPrev);
             double deltaPerpNext = Math.Sqrt(distanceOfTrace * distanceOfTrace - deltaPerpPrev * deltaPerpPrev);
-            double deltaStartNext = deltaPerpNext;
+            
+            double deltaStartNext;
 
-            if (deltaPerpStart < deltaPerpNext)
-                deltaStartNext -= deltaPerpStart;
+            if (cosA <= 0) 
+            { 
+                deltaStartNext = deltaPerpNext - deltaPerpStart; 
+            }
+            else
+            {
+                if (deltaPerpStart <= deltaPerpNext)
+                    deltaStartNext = deltaPerpNext + deltaPerpStart;
+                else
+                    deltaStartNext = deltaPerpStart - deltaPerpNext;
+            }
+            
 
             return deltaStartNext;
         }
@@ -58,17 +82,27 @@ namespace Segy_Coord
         }
 
         //Расчет косинуса угла между двумя векторами
-        private static double CalCulateCosA(Vector vector1, Vector vector2)
+        private static decimal CalCulateCosA(Vector vector1, Vector vector2)
         {
-            double multiplyOfModuls = vector1.Length * vector2.Length;
-            return CalCulateScalarMultiply(vector1, vector2) / multiplyOfModuls;
+            decimal multiplyOfModuls = Convert.ToDecimal(vector1.Length) * Convert.ToDecimal(vector2.Length);
+            decimal scalarMultiply = Convert.ToDecimal(CalCulateScalarMultiply(vector1, vector2));
+            decimal cosA = Convert.ToDecimal(scalarMultiply) / Convert.ToDecimal(multiplyOfModuls);
+
+            if (cosA < -1) cosA = -1;
+            if (cosA > 1) cosA = 1;
+            
+            return cosA;
         }
 
         //Расчет синуса угла между двумя векторами
-        public static double CalCulateSinAngle(Vector vector1, Vector vector2)
-        {
-            double cosA = CalCulateCosA(vector1, vector2);
-            return (double)Math.Sqrt(1 - cosA * cosA);
+        public static double CalCulateSinAngle(decimal cosA)
+        {            
+            double sinA = (double)Math.Sqrt((double)(1 - cosA * cosA));
+
+            if (sinA < -1) sinA = -1;
+            if (sinA > 1) sinA = 1;
+
+            return sinA;
         }
 
         //Расчет длины всего профиля, состоящего из сегментов
@@ -398,12 +432,7 @@ namespace Segy_Coord
             return numTracesForSegment;
         }
 
-        private static void CalculateStartPoint(ref int numberOfTrace, ref PointD startPointOfSegment, double distanceOfTrace, Vector vectorNextSegment, ref PointD[] coordinates)
-        {
-            numberOfTrace++;
-            startPointOfSegment = CalculateNextStartPoint(startPointOfSegment, vectorNextSegment, distanceOfTrace);
-            coordinates[numberOfTrace] = new PointD(startPointOfSegment.X, startPointOfSegment.Y);
-        }
+        
 
     }
 }

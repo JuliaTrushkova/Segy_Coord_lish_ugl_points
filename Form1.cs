@@ -46,7 +46,7 @@ namespace Segy_Coord
                 //создает отдельно путь до файлов
                 string pathtofiles = Path.GetDirectoryName(Filenames1[0]);
                 DateTime dateTime = DateTime.Now;
-                Logging.FileOfLogs = $"{pathtofiles} + \\logfile_ + {dateTime: dd hh mm} +.txt";
+                Logging.FileOfLogs = $"{pathtofiles}\\logfile_{dateTime: dd_MM_hhh_mmm} .txt";
 
                 //считываем и меняем файлы
                 for (int j = 0; j < Filenames1.Length; j++)
@@ -78,7 +78,7 @@ namespace Segy_Coord
                     WriteCoordinatesToTraceHeaders(ref line, coordinates, reader.XLocation, reader.YLocation);
 
                     //записываем segy в файл
-                    string changedFileName = pathtofiles + NameOfProfile + "_izm.segy";
+                    string changedFileName = pathtofiles + "\\" + NameOfProfile + "_izm.segy";
                     File.WriteAllBytes(changedFileName, SegyToByte(line));
 
                     Logging.SendOk(); //файл записался успешно           
