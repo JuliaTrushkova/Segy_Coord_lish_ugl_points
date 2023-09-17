@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -81,8 +82,21 @@ namespace Segy_Coord
             return length;
         }
 
+        //Переделывает список точек в список векторов (сегментов)
+        public static List<Vector> ConvertPointsToVectors(List<PointD> cornerPoints)
+        {
+            List<Vector> vectorsOfCornerPoints = new List<Vector>();
 
-        //Запись координат в отдельный файл
+            for (int i = 0; i < cornerPoints.Count - 1; i++)
+            {
+                Vector vector = new Vector(cornerPoints[i], cornerPoints[i + 1]);
+                vectorsOfCornerPoints.Add(vector);
+            }
+
+            return vectorsOfCornerPoints;
+        }
+
+        //Запись координат в отдельный файл (формат Х Y)
         public static void WriteCoordsToFile(PointD[] points, string FileName)
         {
             string path = Path.GetDirectoryName(FileName);
@@ -100,25 +114,12 @@ namespace Segy_Coord
         }
 
         /// <summary>
-        /// Считывает в отдельную коллекцию координаты трасс  
+        /// Преобразует угловые точки в координаты для каждой трассы (разделение каждого сегмента угловых точек на заданное расстояние между трассами)
         /// </summary>
         /// <param name="trace"></param>
         /// <param name="ShiftLocation"></param>
-        /// <returns></returns>
-        //    public PointD[] TransformCornerPointsToLinePoints(int countOfTraces, string lineName, Dictionary<string, List<PointD>> cornerPointsAllProfiles)
-        //    {
-        //        PointD[] coordinates = new PointD[countOfTraces];
-
-        //        if (!cornerPointsAllProfiles.Keys.Contains(lineName))
-        //        {
-        //            Logging.SendNoCornerPoints();
-        //            return null;
-        //        }
-
-        //List<PointD> cornerPoints = cornerPointsAllProfiles[lineName];
-
-
-        public PointD[] TransformCornerPointsToLinePoints(int countOfTraces, string lineName, List<Vector> vectorsCornerPoints, double initialDistanceOfTrace)
+        /// <returns></returns>       
+        public static PointD[] TransformCornerPointsToLinePoints(int countOfTraces, string lineName, List<Vector> vectorsCornerPoints, double initialDistanceOfTrace)
         {
             PointD[] coordinates = new PointD[countOfTraces];
 
@@ -134,21 +135,24 @@ namespace Segy_Coord
             coordinates[0] = new PointD(vectorsCornerPoints[0].StartPoint.X, vectorsCornerPoints[0].StartPoint.Y);
             coordinates[coordinates.Length - 1] = new PointD(vectorsCornerPoints[vectorsCornerPoints.Count - 1].EndPoint.X, vectorsCornerPoints[vectorsCornerPoints.Count - 1].EndPoint.Y);
 
-
-            double lengthOfProfile = LengthOfProfile(vectorsCornerPoints); //длина всего профиля
+            //длина всего профиля
+            double lengthOfProfile = LengthOfProfile(vectorsCornerPoints);
             Logging.SendLengthOfProfile(lengthOfProfile);
 
-            double distanceOfTrace = CalculateDistanceOfTraces(initialDistanceOfTrace, lengthOfProfile, countOfTraces); //расстояние между трассами
+            //расстояние между трассами (рассчитывается исходя из длины всего профиля, количества трасс и заданного или нет пользователем расстояния между трассами)
+            double distanceOfTrace = CalculateDistanceOfTraces(initialDistanceOfTrace, lengthOfProfile, countOfTraces); 
             Logging.SendDistanceOfTrace(distanceOfTrace);
 
-            PointD startPointOfSegment = new PointD(vectorsCornerPoints[0].StartPoint.X, vectorsCornerPoints[0].StartPoint.Y); //начальная точка в сегменте
+            //начальная точка в сегменте (сначала это первая угловая точка)
+            PointD startPointOfSegment = new PointD(vectorsCornerPoints[0].StartPoint.X, vectorsCornerPoints[0].StartPoint.Y); 
 
             int numberOfTrace = 0;
 
+            //Если количество угловых точек две, то значит это координаты начала и конца профиля. 
             if (vectorsCornerPoints.Count == 1)
             {
                 //Количество трасс на профиле
-                int numTracesForProfile = CalcaluteNumberOfTracesForSegment(null, vectorsCornerPoints[0], distanceOfTrace, 0, countOfTraces);                
+                int numTracesForProfile = CalcaluteNumberOfTracesForSegment(null, vectorsCornerPoints[0], distanceOfTrace, 0, countOfTraces);
 
                 //приращение по х и у для каждой трассы в сегменте
                 (double dX, double dY) dXdYOfTrace = CalculatedXdYForTrace(vectorsCornerPoints[0], distanceOfTrace);
@@ -157,6 +161,7 @@ namespace Segy_Coord
                 FillTableOfCoordinates(ref startPointOfSegment, ref coordinates, numTracesForProfile, ref numberOfTrace, dXdYOfTrace);
 
             }
+            //Если больше двух точек, то уже надо отдельно рассчитывать для каждого сегмента координаты трасс с учетом сохранения расстояния между трассами и направления вектора сегмента
             else
             {
                 for (int i = 0; i < vectorsCornerPoints.Count; i++)
@@ -164,9 +169,7 @@ namespace Segy_Coord
                     //расчет начальной точки каждого сегмента так, чтобы расстояние между трассами сохранялось
                     if (i > 0)
                     {
-                        numberOfTrace++;
-                        startPointOfSegment = CalculateNextStartPoint(startPointOfSegment, vectorsCornerPoints[i], distanceOfTrace);
-                        coordinates[numberOfTrace] = new PointD(startPointOfSegment.X, startPointOfSegment.Y);
+                        CalculateStartPoint(ref numberOfTrace, ref startPointOfSegment, distanceOfTrace, vectorsCornerPoints[i], ref coordinates);
                     }
 
                     //количество трасс в сегменте                    
@@ -180,7 +183,9 @@ namespace Segy_Coord
 
                 }
             }
-            coordinates = CheckForNullAndDistance(coordinates, distanceOfTrace);
+            //Проверяет остались ли незаполненные ячейки координат
+            //(в случае если задано такое расстояние между трассами, что длины профиля либо не хватает, либо много для полного заполнения таблицы координат для всех трасс)
+            CheckForNullAndDistance(ref coordinates, distanceOfTrace);
             return coordinates;
         }
 
@@ -189,97 +194,147 @@ namespace Segy_Coord
         //Если есть, то считает сколько их и в зависимости от их количества добавляет точки сначала и с конца пополам.
         //Далее проверяет расстояние между последней и предпоследней точками.
         //Если расстояние не совпадает с расстоянием в целом по сегменту, то меняет значение последней точки на новое (предпоследняя точка + сдвиг по сегменту)
-        private static PointD[] CheckForNullAndDistance(PointD[] points, double distanceOfTraces)
+        private static void CheckForNullAndDistance(ref PointD[] points, double distanceOfTraces)
         {
+            //Поиск всех Null значений
+            CheckNullValues(ref points);
+
+            //Проверка последней ячейки
+            CheckDistanceOfLastTrace(ref points, distanceOfTraces);
+        }
+
+        //Проверяет остались ли незаполненные ячейки координат.
+        //Если есть, то считает сколько их и в зависимости от их количества добавляет точки сначала и с конца пополам.
+        private static void CheckNullValues(ref PointD[] points)
+        {
+            //Поиск всех Null значений
             int countOfNull = points.Where(p => p == null).Count();
+            //Далее количество Null значений будет уменьшаться за счет добавления дополнительных точек
             int countOfRestNull = countOfNull;
 
-            //Заполнение null
+            //Заполнение null путем добавления точек с начала и конца профиля
             if (countOfNull > 0)
             {
-                Logging.SendCountOfNullValues(countOfNull);
-
-                int countNullOfEnd = (int)countOfNull / 2;
-                int countNullOfStart = countOfNull - countNullOfEnd;
-
-                Logging.SendCountOfAddedEndPointsForNull(countNullOfEnd);
-                Logging.SendCountOfAddedStartPointsForNull(countNullOfStart);
-
-                int indexOfLastNotNull = points.Length - 1 - countOfNull - 1;
-                (double dx, double dy) dXdYOfSegmentEnd = DXDYOfSegment(points[indexOfLastNotNull - 1], points[indexOfLastNotNull]);
-                while (countNullOfEnd > 0)
-                {
-                    int indexOfFirstNull = points.Length - 1 - countOfRestNull;
-                    points[indexOfFirstNull] = new PointD(points[indexOfFirstNull - 1].X + dXdYOfSegmentEnd.dx, points[indexOfFirstNull - 1].Y + dXdYOfSegmentEnd.dy);
-                    countOfRestNull--;
-                    countNullOfEnd--;
-                }
-                (double dx, double dy) dXdYOfSegmentStart = DXDYOfSegment(points[1], points[0]);
-                while (countNullOfStart > 0)
-                {
-                    PointD point = new PointD(points[0].X + dXdYOfSegmentStart.dx, points[0].Y + dXdYOfSegmentStart.dy);
-                    List<PointD> pointsList = points.ToList();
-                    pointsList.RemoveAt(points.Length - 1 - countOfRestNull);
-                    points = pointsList.Prepend(point).ToArray();
-                    countOfRestNull--;
-                    countNullOfStart--;
-                }
+                FillNullTraces(ref points, countOfNull, ref countOfRestNull);
             }
             else
             {
                 Logging.SendNoNullValues();
             }
+        }
 
-            //Проверка последней ячейки
-            (double dx, double dy) dXdYOfSegment = DXDYOfSegment(points[points.Length - 3], points[points.Length - 2]);
-            (double dx, double dy) dXdYOfLastSegmentEnd = DXDYOfSegment(points[points.Length - 2], points[points.Length - 1]);
-            double lengthOfLastSegmentEnd = LengthOfSegment(points[points.Length - 2], points[points.Length - 1]);
-
-            double diffDXOfSegmentAllAndEnd = dXdYOfSegment.dx - dXdYOfLastSegmentEnd.dx;
-            double diffDYOfSegmentAllAndEnd = dXdYOfSegment.dy - dXdYOfLastSegmentEnd.dy;
-
+        //Проверяет расстояние между последней и предпоследней точками.
+        //Если расстояние не совпадает с расстоянием в целом по сегменту, то меняет значение последней точки на новое (предпоследняя точка + сдвиг по сегменту)
+        private static void CheckDistanceOfLastTrace(ref PointD[] points, double distanceOfTraces)
+        {
+           //Считаем количество трасс, которые помещаются между последней и предпоследней трассой (делим расстояние между ними на заданное расстояние между трассами)            
+            Vector vectorLast2Traces = new Vector(points[points.Length - 2], points[points.Length - 1]);            
+            double lengthOfLastSegmentEnd = vectorLast2Traces.Length;
             int numberOfTracesInTheEndSegment = (int)(lengthOfLastSegmentEnd / distanceOfTraces);
-
             Logging.SendCountOfAddedEndTraces(numberOfTracesInTheEndSegment);
 
+            //Расчет смещений вдоль последнего сегмента
+            Vector vectorPenult2Traces = new Vector(points[points.Length - 3], points[points.Length - 2]);
+            (double dx, double dy) dXdYOfPenultSegment = vectorPenult2Traces.DXDYOfVector();
+
+            //Если помещается меньше 2 трасс, то просто меняем координату последней трассы на новую (рассчитанное смещение предпоследней)
             if (0 <= numberOfTracesInTheEndSegment && numberOfTracesInTheEndSegment < 3)
             {
-                points[points.Length - 1] = new PointD(points[points.Length - 2].X + dXdYOfSegment.dx, points[points.Length - 2].Y + dXdYOfSegment.dy);
+                points[points.Length - 1] = new PointD(points[points.Length - 2].X + dXdYOfPenultSegment.dx, points[points.Length - 2].Y + dXdYOfPenultSegment.dy);
 
                 Logging.SendLastPointChanged();
             }
+            //Если помещается больше 2 трасс, то смещаем профиль на нужное количество отсчетов
             else if (numberOfTracesInTheEndSegment >= 3)
             {
-                int shiftOnStart = (int)(numberOfTracesInTheEndSegment / 2);
-                List<PointD> pointsList = points.ToList();
-                List<PointD> pointsList2 = pointsList.Skip(shiftOnStart).ToList();
-                List<PointD> pointsList3 = pointsList2.Take(pointsList2.Count - 1).ToList();
-                for (int k = 0; k < shiftOnStart + 1; k++)
-                {
-                    PointD lastPoint = new PointD(pointsList3[pointsList3.Count - 1].X + dXdYOfSegment.dx, pointsList3[pointsList3.Count - 1].Y + dXdYOfSegment.dy);
-                    pointsList3.Add(lastPoint);
-                }
-                points = pointsList3.ToArray();
-
-                Logging.SendCountOfAddedEndPointsForDistance(shiftOnStart);
-                Logging.SendCountOfAddedStartPointsForDistance(shiftOnStart);
+                FillTracesToEndAndShiftStart(ref points, numberOfTracesInTheEndSegment, dXdYOfPenultSegment);
             }
-            return points;
         }
 
-        //Переделывает список точек в список векторов (сегментов)
-        public static List<Vector> ConvertPointsToVectors(List<PointD> cornerPoints)
+        //Смещение профиля на половину количества трасс, которые вмещаются между последней и предпоследней трассой
+        private static void FillTracesToEndAndShiftStart(ref PointD[] points, int numberOfTracesInTheEndSegment, (double dx, double dy) dXdYOfSegment)
         {
-            List<Vector> vectorsOfCornerPoints = new List<Vector>();
-
-            for (int i = 0; i < cornerPoints.Count - 1; i++)
+            //Рассчитывает количество точек, на которое нужно сдвинуть начало профиля (половина всех вмещаемых трасс)
+            int shiftOnStart = (int)(numberOfTracesInTheEndSegment / 2);
+            //Сдвигает начало профиля и убирает последнюю трассу
+            List<PointD> pointsList = points.Skip(shiftOnStart).Take(points.Length - 1 - shiftOnStart).ToList();
+            
+            //Заполняет конец профиля нужными координатами со смещением по Х и Y последнего сегмента
+            for (int k = 0; k < shiftOnStart + 1; k++)
             {
-                Vector vector = new Vector(cornerPoints[i], cornerPoints[i + 1]);
-                vectorsOfCornerPoints.Add(vector);
+                PointD lastPoint = new PointD(pointsList[pointsList.Count - 1].X + dXdYOfSegment.dx, pointsList[pointsList.Count - 1].Y + dXdYOfSegment.dy);
+                pointsList.Add(lastPoint);
             }
 
-            return vectorsOfCornerPoints;
+            points = pointsList.ToArray();
+
+            Logging.SendCountOfAddedEndPointsForDistance(shiftOnStart);
+            Logging.SendCountOfAddedStartPointsForDistance(shiftOnStart);
         }
+
+        //Заполнение рассчитанными координатами ячейки с Null значениями
+        private static void FillNullTraces(ref PointD[] points, int countOfNull, ref int countOfRestNull)
+        {
+            Logging.SendCountOfNullValues(countOfNull);
+            //в конец и начало профиля добавляется равное количество точек для убирания всех значений Null
+            //если нечетное количество Null, то в начало добавляется больше на 1
+            //если количество Null равно 1, то точка добавляется в начало
+            int countNullOfEnd = (int)countOfNull / 2;
+            int countNullOfStart = countOfNull - countNullOfEnd;
+            Logging.SendCountOfAddedEndPointsForNull(countNullOfEnd);
+            Logging.SendCountOfAddedStartPointsForNull(countNullOfStart);
+
+            //Заполнение конца профиля точками в количестве половины колчиества Null вдоль направления последнего сегмента
+            FillEndOfProfile(ref points, countOfNull, countNullOfEnd, ref countOfRestNull);
+
+            //Заполнение начала профиля точками в количестве половины колчиества Null вдоль направления первого сегмента
+            FillStartOfProfile(ref points, countOfNull, countNullOfStart, ref countOfRestNull);
+        }
+
+        //Заполнение конца профиля точками в количестве половины количества Null вдоль направления последнего сегмента
+        private static void FillEndOfProfile(ref PointD[] points, int countOfNull, int countNullOfEnd, ref int countOfRestNull)
+        {
+            //Расчет индекса последнего ненулевого значения
+            int indexOfLastNotNull = points.Length - 1 - countOfNull - 1;
+
+            //Задание направления добавления точек в конец профиля путем расчета смещения по х и у по последней паре трасс с не Null значениями
+            Vector vectorOfLastSegment = new Vector(points[indexOfLastNotNull - 1], points[indexOfLastNotNull]);
+            (double dx, double dy) dXdYOfSegmentEnd = vectorOfLastSegment.DXDYOfVector();            
+
+            //Заполнение точками в конец профиля
+            while (countNullOfEnd > 0)
+            {
+                int indexOfFirstNull = points.Length - 1 - countOfRestNull;
+                points[indexOfFirstNull] = new PointD(points[indexOfFirstNull - 1].X + dXdYOfSegmentEnd.dx, points[indexOfFirstNull - 1].Y + dXdYOfSegmentEnd.dy);
+                countOfRestNull--; //уменьшение количества оставшихся Null
+                countNullOfEnd--; //уменьшение количества оставшихся Null для конца профиля
+            }
+        }
+        
+        //Заполнение начала профиля точками в количестве половины количества Null вдоль направления первого сегмента
+        private static void FillStartOfProfile(ref PointD[] points, int countOfNull, int countNullOfStart, ref int countOfRestNull)
+        {
+            //Задание направления добавления точек в начало профиля путем расчета смещения по х и у по первой паре трасс
+            Vector vectorOfFirstSegment = new Vector(points[1], points[0]);
+            (double dx, double dy) dXdYOfSegmentStart = vectorOfFirstSegment.DXDYOfVector();
+
+            //Переделывание массива в лист, чтобы можно было удобнее удалять/добавлять элементы
+            List<PointD> pointsList = points.ToList();
+            pointsList.RemoveRange(points.Length - 1 - countOfRestNull, countNullOfStart);
+
+            //Расчет точек, которые нужно вставить в начало, с одинаковым смещением друг от друга как в первом сегменте
+            List<PointD> pointsToAdd = new List<PointD>();
+            int count = 1;
+            while (countNullOfStart > 0)
+            {
+                PointD point = new PointD(points[0].X + dXdYOfSegmentStart.dx * count, points[0].Y + dXdYOfSegmentStart.dy * count);
+                count++;               
+                countNullOfStart--;
+            }
+            //добавление новых точек в начало массива точек
+            pointsList.InsertRange(0, pointsToAdd);
+            points = pointsList.ToArray();
+        }       
 
         //Запись в таблиу координат нужного количества точек с заданным шагом по координатам, начиная с нужного номера
         private static void FillTableOfCoordinates(ref PointD startPointOfSegment, ref PointD[] coordinates, int countOfAddPoints, ref int numberOfTrace, (double dX, double dY) dXdYOfTrace)
@@ -341,6 +396,13 @@ namespace Segy_Coord
 
             return numTracesForSegment;
         }
-       
+
+        private static void CalculateStartPoint(ref int numberOfTrace, ref PointD startPointOfSegment, double distanceOfTrace, Vector vectorNextSegment, ref PointD[] coordinates)
+        {
+            numberOfTrace++;
+            startPointOfSegment = CalculateNextStartPoint(startPointOfSegment, vectorNextSegment, distanceOfTrace);
+            coordinates[numberOfTrace] = new PointD(startPointOfSegment.X, startPointOfSegment.Y);
+        }
+
     }
 }
