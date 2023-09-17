@@ -85,6 +85,14 @@ namespace Segy_Coord
             LoggingMessage.Append(Path.GetFileNameWithoutExtension(NameOfLine) + "\t");
         }
 
+        public static void WriteLogToFile()
+        {
+            using (StreamWriter streamForLogFile = File.AppendText(FileOfLogs))
+            {
+                streamForLogFile.WriteLine(LoggingMessage.ToString());
+            }
 
+            LoggingMessage.Clear();
+        }
     }
 }

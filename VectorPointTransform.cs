@@ -119,7 +119,7 @@ namespace Segy_Coord
         /// <param name="trace"></param>
         /// <param name="ShiftLocation"></param>
         /// <returns></returns>       
-        public static PointD[] TransformCornerPointsToLinePoints(int countOfTraces, string lineName, List<Vector> vectorsCornerPoints, double initialDistanceOfTrace)
+        public static PointD[] TransformCornerPointsToLinePoints(int countOfTraces, List<Vector> vectorsCornerPoints, double initialDistanceOfTrace)
         {
             PointD[] coordinates = new PointD[countOfTraces];
 
@@ -288,7 +288,7 @@ namespace Segy_Coord
             FillEndOfProfile(ref points, countOfNull, countNullOfEnd, ref countOfRestNull);
 
             //Заполнение начала профиля точками в количестве половины колчиества Null вдоль направления первого сегмента
-            FillStartOfProfile(ref points, countOfNull, countNullOfStart, ref countOfRestNull);
+            FillStartOfProfile(ref points, countNullOfStart, ref countOfRestNull);
         }
 
         //Заполнение конца профиля точками в количестве половины количества Null вдоль направления последнего сегмента
@@ -312,7 +312,7 @@ namespace Segy_Coord
         }
         
         //Заполнение начала профиля точками в количестве половины количества Null вдоль направления первого сегмента
-        private static void FillStartOfProfile(ref PointD[] points, int countOfNull, int countNullOfStart, ref int countOfRestNull)
+        private static void FillStartOfProfile(ref PointD[] points, int countNullOfStart, ref int countOfRestNull)
         {
             //Задание направления добавления точек в начало профиля путем расчета смещения по х и у по первой паре трасс
             Vector vectorOfFirstSegment = new Vector(points[1], points[0]);
@@ -328,6 +328,7 @@ namespace Segy_Coord
             while (countNullOfStart > 0)
             {
                 PointD point = new PointD(points[0].X + dXdYOfSegmentStart.dx * count, points[0].Y + dXdYOfSegmentStart.dy * count);
+                pointsToAdd.Add(point);
                 count++;               
                 countNullOfStart--;
             }

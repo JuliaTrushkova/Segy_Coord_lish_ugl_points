@@ -20,7 +20,7 @@ namespace Segy_Coord
     {
 
         Dictionary<string, List<Vector>> cornerPointsAllProfiles;
-        
+
 
         public Form1()
         {
@@ -54,59 +54,36 @@ namespace Segy_Coord
                     //считывание segy файла для добавление в исходный список segy файлов
                     ISegyFile line = reader.Read(Filenames1[j]);
                     line.FileInByte = File.ReadAllBytes(Filenames1[j]);
-                    
+
+                    //Считывание названия профиля, расстояния между трассами и количества трасс
                     string NameOfProfile = Path.GetFileNameWithoutExtension(Filenames1[j]);
                     Logging.SendNameOfLine(NameOfProfile);
+
+                    double initialDistanceOfTrace = checkBox1.Checked ? (double)numericUpDown1.Value : 0;
+
+                    int countOfTraces = line.Traces.Count;
+                    PointD[] coordinates = new PointD[countOfTraces];
+
                     //записываем координаты
-                    if (cornerPointsAllProfiles.TryGetValue())
-                    PointD[] coordinates = VectorPointTransform.TransformCornerPointsToLinePoints(line.Traces.Count, Path.GetFileNameWithoutExtension(Filenames1[j]), );
+                    if (cornerPointsAllProfiles.TryGetValue(NameOfProfile, out List<Vector> vectorOfCornerPoints))
+                        coordinates = VectorPointTransform.TransformCornerPointsToLinePoints(countOfTraces, vectorOfCornerPoints, initialDistanceOfTrace);
 
                     if (coordinates == null || coordinates.Length == 0)
                         continue;
 
+                    //Записываем координаты в файл
                     VectorPointTransform.WriteCoordsToFile(coordinates, Filenames1[j]);
 
-                    for (int i = 0; i < line.Traces.Count; i++)
-                    {
-                        line.Traces[i].Header.X = (float)coordinates[i].X;
-                        line.Traces[i].Header.Y = (float)coordinates[i].Y;
-
-                        if (radioButton1.Checked)
-                        {
-                            byte[] coordXinBytes = BitConverter.GetBytes((int)line.Traces[i].Header.X).Reverse().ToArray();
-                            byte[] coordYinBytes = BitConverter.GetBytes((int)line.Traces[i].Header.Y).Reverse().ToArray();
-
-                            for (int k = 0; k < coordXinBytes.Length; k++)
-                            {
-                                line.Traces[i].Header.TextHeader[reader.XLocation - 1 + k] = coordXinBytes[k];
-                                line.Traces[i].Header.TextHeader[reader.YLocation - 1 + k] = coordYinBytes[k];
-                            }
-                        }
-                        if (radioButton2.Checked)
-                        {
-                            byte[] coordXinBytes = BitConverter.GetBytes(line.Traces[i].Header.X).ToArray();
-                            byte[] coordYinBytes = BitConverter.GetBytes(line.Traces[i].Header.Y).ToArray();
-
-                            for (int k = 0; k < coordXinBytes.Length; k++)
-                            {
-                                line.Traces[i].Header.TextHeader[reader.XLocation - 1 + 3 - k] = coordXinBytes[k];
-                                line.Traces[i].Header.TextHeader[reader.YLocation - 1 + 3 - k] = coordYinBytes[k];
-                            }
-                        }
-                    }
+                    //Записываем координаты в заголовки трасс
+                    WriteCoordinatesToTraceHeaders(ref line, coordinates, reader.XLocation, reader.YLocation);
 
                     //записываем segy в файл
-                    string[] nameFile = Filenames1[j].Split('.');
-                    File.WriteAllBytes(nameFile[0] + "_izm.segy", SegyToByte(line));
+                    string changedFileName = pathtofiles + NameOfProfile + "_izm.segy";
+                    File.WriteAllBytes(changedFileName, SegyToByte(line));
 
                     Logging.SendOk(); //файл записался успешно           
 
-                    using (StreamWriter streamForLogFile = File.AppendText(Logging.FileOfLogs))
-                    {
-                        streamForLogFile.WriteLine(Logging.LoggingMessage.ToString());
-                    }
-
-                    Logging.LoggingMessage.Clear();
+                    Logging.WriteLogToFile();
                 }
 
                 // Calculate(Filenames1, reader, streamForLogFile);
@@ -122,15 +99,58 @@ namespace Segy_Coord
             }
         }
 
-        private void Calculate(string[] Filenames1, SegyReader reader, StreamWriter streamForLogFile)
+        private void WriteCoordinatesToTraceHeaders(ref ISegyFile line, PointD[] coordinates, int byteOfXlocation, int byteOfYlocation)
         {
+            for (int i = 0; i < line.Traces.Count; i++)
+            {
+                line.Traces[i].Header.X = (float)coordinates[i].X;
+                line.Traces[i].Header.Y = (float)coordinates[i].Y;
 
+                if (radioButton1.Checked)
+                {
+                    WriteBytesToTraceHeaders(ref line, byteOfXlocation, byteOfYlocation, i, true);                    
+                }
+                if (radioButton2.Checked)
+                {
+                    WriteBytesToTraceHeaders(ref line, byteOfXlocation, byteOfYlocation, i, false);
+                }
+            }
 
         }
 
+        private void WriteBytesToTraceHeaders(ref ISegyFile line, int byteOfXlocation, int byteOfYlocation, int index, bool IsInteger)
+        {
+            double X = line.Traces[index].Header.X;
+            double Y = line.Traces[index].Header.Y;
+
+            if (IsInteger)
+            {
+                X = (int)X;
+                Y = (int)Y;
+            }
+
+            byte[] coordXinBytes = BitConverter.GetBytes(X).ToArray();
+            byte[] coordYinBytes = BitConverter.GetBytes(Y).ToArray();
+
+            int sign = -1;
+            int startOfByte = 3;
+
+            if (IsInteger)
+            {
+                coordXinBytes = coordXinBytes.Reverse().ToArray();
+                coordYinBytes = coordYinBytes.Reverse().ToArray();
+                startOfByte = 0;
+                sign = 1;
+            }
+
+            for (int k = 0; k < coordXinBytes.Length; k++)
+            {
+                line.Traces[index].Header.TextHeader[byteOfXlocation - 1 + startOfByte + k * sign] = coordXinBytes[k];
+                line.Traces[index].Header.TextHeader[byteOfYlocation - 1 + startOfByte + k * sign] = coordYinBytes[k];
+            }
+        }
 
 
-        
         //Сохранение экземпляра класса ISegyFile в массив байтов
         byte[] SegyToByte(ISegyFile isgy)
         {

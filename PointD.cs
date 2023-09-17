@@ -36,9 +36,6 @@ namespace Segy_Coord
             set { _y = value; }
         }
 
-
-        public double getY() { return Y; }
-
         public static PointD SubstractP2FromP1(PointD point1, PointD point2)
         {
             PointD result = new PointD(point1._x, point1._y);
