@@ -49,11 +49,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="Unplugged.IbmBits, Version=0.0.0.3, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\bin\Release\Unplugged.IbmBits.dll</HintPath>
+      <HintPath>bin\Release\Unplugged.IbmBits.dll</HintPath>
     </Reference>
     <Reference Include="Unplugged.Segy, Version=0.6.1.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>UnpluggedSegy-master\UnpluggedSegy-master\Unplugged.Segy\bin\Release\Unplugged.Segy.dll</HintPath>
+      <HintPath>bin\Release\Unplugged.Segy.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
