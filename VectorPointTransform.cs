@@ -182,6 +182,8 @@ namespace Segy_Coord
 
             int numberOfTrace = 0;
 
+            bool IsEnoughTraces = true;
+
             //Если количество угловых точек две, то значит это координаты начала и конца профиля. 
             if (vectorsCornerPoints.Count == 1)
             {
@@ -200,6 +202,13 @@ namespace Segy_Coord
             {
                 for (int i = 0; i < vectorsCornerPoints.Count; i++)
                 {
+                    if ((numberOfTrace == countOfTraces - 2) && (i < vectorsCornerPoints.Count - 1))
+                    {
+                        Logging.SendNotEnoughTraces();
+                        IsEnoughTraces = false;
+                        break;
+                    }
+
                     //расчет начальной точки каждого сегмента так, чтобы расстояние между трассами сохранялось
                     if (i > 0)
                     {
@@ -213,13 +222,12 @@ namespace Segy_Coord
                     (double dX, double dY) dXdYOfTrace = CalculatedXdYForTrace(vectorsCornerPoints[i], distanceOfTrace);
 
                     //расчет координат трасс в сегменте и добавление их в общую коллекцию
-                    FillTableOfCoordinates(ref startPointOfSegment, ref coordinates, numTracesForSegment, ref numberOfTrace, dXdYOfTrace);
-
+                    FillTableOfCoordinates(ref startPointOfSegment, ref coordinates, numTracesForSegment, ref numberOfTrace, dXdYOfTrace);                    
                 }
             }
             //Проверяет остались ли незаполненные ячейки координат
             //(в случае если задано такое расстояние между трассами, что длины профиля либо не хватает, либо много для полного заполнения таблицы координат для всех трасс)
-            CheckForNullAndDistance(ref coordinates, distanceOfTrace);
+            CheckForNullAndDistance(ref coordinates, distanceOfTrace, IsEnoughTraces);
             return coordinates;
         }
 
@@ -228,13 +236,20 @@ namespace Segy_Coord
         //Если есть, то считает сколько их и в зависимости от их количества добавляет точки сначала и с конца пополам.
         //Далее проверяет расстояние между последней и предпоследней точками.
         //Если расстояние не совпадает с расстоянием в целом по сегменту, то меняет значение последней точки на новое (предпоследняя точка + сдвиг по сегменту)
-        private static void CheckForNullAndDistance(ref PointD[] points, double distanceOfTraces)
+        private static void CheckForNullAndDistance(ref PointD[] points, double distanceOfTraces, bool IsEnoughTraces)
         {
-            //Поиск всех Null значений
-            CheckNullValues(ref points);
+            if (IsEnoughTraces)
+            {
+                //Поиск всех Null значений
+                CheckNullValues(ref points);
 
-            //Проверка последней ячейки
-            CheckDistanceOfLastTrace(ref points, distanceOfTraces);
+                //Проверка последней ячейки
+                CheckDistanceOfLastTrace(ref points, distanceOfTraces);
+            }
+            else
+            {
+                ChangeLastTrace(ref points);
+            }
         }
 
         //Проверяет остались ли незаполненные ячейки координат.
@@ -265,29 +280,35 @@ namespace Segy_Coord
             Vector vectorLast2Traces = new Vector(points[points.Length - 2], points[points.Length - 1]);            
             double lengthOfLastSegmentEnd = vectorLast2Traces.Length;
             int numberOfTracesInTheEndSegment = (int)(lengthOfLastSegmentEnd / distanceOfTraces);
-            Logging.SendCountOfAddedEndTraces(numberOfTracesInTheEndSegment);
-
-            //Расчет смещений вдоль последнего сегмента
-            Vector vectorPenult2Traces = new Vector(points[points.Length - 3], points[points.Length - 2]);
-            (double dx, double dy) dXdYOfPenultSegment = vectorPenult2Traces.DXDYOfVector();
+            Logging.SendCountOfAddedEndTraces(numberOfTracesInTheEndSegment);           
 
             //Если помещается меньше 2 трасс, то просто меняем координату последней трассы на новую (рассчитанное смещение предпоследней)
             if (0 <= numberOfTracesInTheEndSegment && numberOfTracesInTheEndSegment < 3)
             {
-                points[points.Length - 1] = new PointD(points[points.Length - 2].X + dXdYOfPenultSegment.dx, points[points.Length - 2].Y + dXdYOfPenultSegment.dy);
-
-                Logging.SendLastPointChanged();
+                ChangeLastTrace(ref points);
             }
             //Если помещается больше 2 трасс, то смещаем профиль на нужное количество отсчетов
             else if (numberOfTracesInTheEndSegment >= 3)
             {
-                FillTracesToEndAndShiftStart(ref points, numberOfTracesInTheEndSegment, dXdYOfPenultSegment);
+                FillTracesToEndAndShiftStart(ref points, numberOfTracesInTheEndSegment);
             }
         }
 
-        //Смещение профиля на половину количества трасс, которые вмещаются между последней и предпоследней трассой
-        private static void FillTracesToEndAndShiftStart(ref PointD[] points, int numberOfTracesInTheEndSegment, (double dx, double dy) dXdYOfSegment)
+        private static void ChangeLastTrace(ref PointD[] points)
         {
+            //Расчет смещений вдоль последнего сегмента
+            Vector vectorPenult2Traces = new Vector(points[points.Length - 3], points[points.Length - 2]);
+            (double dx, double dy) dXdYOfPenultSegment = vectorPenult2Traces.DXDYOfVector();
+            points[points.Length - 1] = new PointD(points[points.Length - 2].X + dXdYOfPenultSegment.dx, points[points.Length - 2].Y + dXdYOfPenultSegment.dy);
+            Logging.SendLastPointChanged();
+        }
+
+        //Смещение профиля на половину количества трасс, которые вмещаются между последней и предпоследней трассой
+        private static void FillTracesToEndAndShiftStart(ref PointD[] points, int numberOfTracesInTheEndSegment)
+        {
+            //Расчет смещений вдоль последнего сегмента
+            Vector vectorPenult2Traces = new Vector(points[points.Length - 3], points[points.Length - 2]);
+            (double dx, double dy) dXdYOfPenultSegment = vectorPenult2Traces.DXDYOfVector();
             //Рассчитывает количество точек, на которое нужно сдвинуть начало профиля (половина всех вмещаемых трасс)
             int shiftOnStart = (int)(numberOfTracesInTheEndSegment / 2);
             //Сдвигает начало профиля и убирает последнюю трассу
@@ -296,7 +317,7 @@ namespace Segy_Coord
             //Заполняет конец профиля нужными координатами со смещением по Х и Y последнего сегмента
             for (int k = 0; k < shiftOnStart + 1; k++)
             {
-                PointD lastPoint = new PointD(pointsList[pointsList.Count - 1].X + dXdYOfSegment.dx, pointsList[pointsList.Count - 1].Y + dXdYOfSegment.dy);
+                PointD lastPoint = new PointD(pointsList[pointsList.Count - 1].X + dXdYOfPenultSegment.dx, pointsList[pointsList.Count - 1].Y + dXdYOfPenultSegment.dy);
                 pointsList.Add(lastPoint);
             }
 

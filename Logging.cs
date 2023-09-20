@@ -85,6 +85,11 @@ namespace Segy_Coord
             LoggingMessage.Append(Path.GetFileNameWithoutExtension(NameOfLine) + "\t");
         }
 
+        public static void SendNotEnoughTraces()
+        {
+            LoggingMessage.Append("!!!!!Number of traces not enough to use all corner points (may be too small distance between traces)!!!!!" + "\t");
+        }
+
         public static void WriteLogToFile()
         {
             using (StreamWriter streamForLogFile = File.AppendText(FileOfLogs))
